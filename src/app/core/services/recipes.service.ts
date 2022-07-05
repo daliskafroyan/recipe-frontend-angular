@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, ReplaySubject, timer } from 'rxjs';
 import { Recipe } from '../model/recipe.model';
 import { environment } from 'src/environments/environment';
-import { shareReplay, switchMap } from 'rxjs/operators';
+import { share } from 'rxjs/operators';
 const BASE_PATH = environment.basePath
 const REFRESH_INTERVAL = 50000;
 const timer$ = timer(0, REFRESH_INTERVAL);
@@ -16,7 +16,7 @@ export class RecipesService {
 
   recipes$ = this.getRecipesList();
   private filterRecipeSubject = new BehaviorSubject<Recipe>({ title: '' });
-  filterRecipesAction$ = this.filterRecipeSubject.asObservable(); 
+  filterRecipesAction$ = this.filterRecipeSubject.asObservable();
 
   constructor(private http: HttpClient) { }
 
@@ -24,15 +24,33 @@ export class RecipesService {
     this.filterRecipeSubject.next(criteria);
   }
 
-  getRecipesList(): Observable<Recipe[]> {
+//   getRecipesList(): Observable < Recipe[] > {
+//     if (!this.recipes$) {
+//         return timer$.pipe(
+//             switchMap(_ =>
+//                 this.http.get < Recipe[] > (`${BASE_PATH}/recipes`)),
+//             shareReplay({
+//                 bufferSize: 1,
+//                 refCount: true
+//             })
+//         );
+//     }
+//     return this.recipes$;
+// }
+// deprecated
+
+  getRecipesList(): Observable <Recipe[]> {
     if (!this.recipes$) {
-      return timer$.pipe(
-      switchMap(_ => this.http.get<Recipe[]>(`${BASE_PATH}/recipes`)),
-      shareReplay(1)
-    );
+        return this.http.get<Recipe[]> (
+            `${BASE_PATH}/recipes`).pipe(share({
+            connector: () => new ReplaySubject(1),
+            resetOnRefCountZero: true,
+            resetOnComplete: true,
+            resetOnError: true
+        }));
     }
     return this.recipes$;
-  } 
+  }
 
 
   saveRecipe(formValue: Recipe): Observable<Recipe> {
